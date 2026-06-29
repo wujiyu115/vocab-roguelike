@@ -1,0 +1,27 @@
+# User/local state
+dist/savegame.json
+savegame.json
+
+# Temporary previews and imported source spreadsheets
+car_obstacle_cell*.png
+*.xlsx
+
+# Import/asset backup files generated during iteration
+wordbank_*_backup.json
+assets/runtime/*_backup.png
+assets/runtime/theme_obstacles_before_car_cleanup.png
+dist/assets/runtime/*_backup.png
+dist/assets/runtime/theme_obstacles_before_car_cleanup.png
+
+# Heavy intermediate AI generation sources
+assets/generated/raw/
+assets/generated/*.png
+
+# Build/editor noise
+bin/
+obj/
+.vs/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini
