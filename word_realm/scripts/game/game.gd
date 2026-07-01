@@ -6,9 +6,11 @@ const ENEMY_PROJECTILE_SCENE := preload("res://scenes/game/enemy_projectile.tscn
 const PROJECTILE_SCENE := preload("res://scenes/game/projectile.tscn")
 const FLOATING_TEXT_SCENE := preload("res://scenes/game/floating_text.tscn")
 const MEANING_TOKEN_SCENE := preload("res://scenes/game/meaning_token.tscn")
+const DROP_ITEM_SCENE := preload("res://scenes/game/drop_item.tscn")
 
 @onready var player: CharacterBody2D = $Entities/Player
 @onready var background: Sprite2D = $Background
+@onready var reward_panel: Control = $HUD/RewardPanel
 
 var room_generator := RoomGenerator.new()
 var current_meanings: Array = []
@@ -19,11 +21,13 @@ func _ready():
 	player.fired.connect(_on_player_fired)
 	player.picked_up.connect(_on_player_picked_up)
 	player.interacted_chest.connect(_on_chest_opened)
+	reward_panel.reward_chosen.connect(_on_reward_chosen)
 	player.position = Vector2(GameManager.W / 2, GameManager.H / 2 + 120)
 	_start_room()
 
 func _start_room() -> void:
 	GameManager.room += 1
+	_advance_room_powerups()
 	_load_background()
 	_clear_entities()
 	var result := room_generator.generate_room($Entities, player.position)
@@ -100,9 +104,216 @@ func _on_monster_shot(data: Dictionary) -> void:
 	bullet.setup(data)
 	$Entities.add_child(bullet)
 
+# --- Drop item system ---
+
+func _try_drop(monster: Node) -> void:
+	if randf() < 0.16 + player.luck:
+		var kind := randi_range(0, 6) as GameManager.DropKind
+		if current_monsters.size() <= 1:
+			_apply_drop(kind)
+			_add_float("自动拾取：" + DropItem.DROP_NAMES.get(kind, "道具"), monster.position + Vector2(-26, -30), Color(1.0, 0.886, 0.459))
+		else:
+			var drop := DROP_ITEM_SCENE.instantiate()
+			drop.setup(kind, monster.position)
+			drop.body_entered.connect(_on_drop_collected.bind(drop))
+			$Entities.add_child(drop)
+
+func _on_drop_collected(body: Node, drop: Node) -> void:
+	if body == player:
+		_apply_drop(drop.kind)
+		drop.queue_free()
+
+func _apply_drop(kind: int) -> void:
+	match kind:
+		GameManager.DropKind.APPLE:
+			player.hp = minf(player.max_hp, player.hp + player.max_hp * 0.3)
+			_add_float("苹果 +HP", player.position + Vector2(0, -30), Color(0.627, 1.0, 0.682))
+		GameManager.DropKind.COFFEE:
+			player.speed_boost = 7.0
+			_add_float("咖啡 加速", player.position + Vector2(0, -30), Color(0.918, 0.753, 0.494))
+		GameManager.DropKind.SHIELD_POTION:
+			player.shield_time = 10.0
+			_add_float("护盾 10s", player.position + Vector2(0, -30), Color(0.486, 0.804, 1.0))
+		GameManager.DropKind.INK:
+			player.piercing_ink = true
+			GameManager.piercing_ink_rooms = 3
+			_add_float("穿透墨水 3间", player.position + Vector2(-30, -42), Color(0.737, 0.694, 1.0))
+		GameManager.DropKind.BOOTS:
+			_grant_speed_bonus(18.0, "风之靴 3间")
+		GameManager.DropKind.FEATHER:
+			_grant_dash_bonus(0.12, "轻羽 3间")
+		GameManager.DropKind.GLOVES:
+			_grant_pickup_bonus(18.0, "磁力手套 3间")
+
+# --- Grant bonus helpers ---
+
+func _grant_speed_bonus(amount: float, label: String) -> void:
+	if GameManager.temp_speed_bonus <= 0:
+		player.speed += amount
+		GameManager.temp_speed_bonus = amount
+	elif amount > GameManager.temp_speed_bonus:
+		player.speed += amount - GameManager.temp_speed_bonus
+		GameManager.temp_speed_bonus = amount
+	GameManager.speed_boost_rooms = 3
+	_add_float(label, player.position + Vector2(-30, -42), Color(0.624, 0.882, 1.0))
+
+func _grant_throw_bonus(amount: float, label: String) -> void:
+	if GameManager.temp_throw_bonus <= 0:
+		player.throw_speed += amount
+		GameManager.temp_throw_bonus = amount
+	elif amount > GameManager.temp_throw_bonus:
+		player.throw_speed += amount - GameManager.temp_throw_bonus
+		GameManager.temp_throw_bonus = amount
+	GameManager.throw_boost_rooms = 3
+	_add_float(label, player.position + Vector2(-30, -42), Color(1.0, 0.886, 0.459))
+
+func _grant_dash_bonus(amount: float, label: String) -> void:
+	if GameManager.temp_dash_bonus <= 0:
+		player.dash_cooldown = maxf(0.55, player.dash_cooldown - amount)
+		GameManager.temp_dash_bonus = amount
+	elif amount > GameManager.temp_dash_bonus:
+		player.dash_cooldown = maxf(0.55, player.dash_cooldown - (amount - GameManager.temp_dash_bonus))
+		GameManager.temp_dash_bonus = amount
+	GameManager.dash_boost_rooms = 3
+	_add_float(label, player.position + Vector2(-30, -42), Color(0.961, 0.961, 0.824))
+
+func _grant_pickup_bonus(amount: float, label: String) -> void:
+	if GameManager.temp_pickup_bonus <= 0:
+		player.pickup_range += amount
+		GameManager.temp_pickup_bonus = amount
+	elif amount > GameManager.temp_pickup_bonus:
+		player.pickup_range += amount - GameManager.temp_pickup_bonus
+		GameManager.temp_pickup_bonus = amount
+	GameManager.pickup_boost_rooms = 3
+	_add_float(label, player.position + Vector2(-30, -42), Color(1.0, 0.780, 0.471))
+
+# --- Chest system ---
+
+func _on_chest_opened(_chest: Node) -> void:
+	var choice := randi_range(0, 2)
+	match choice:
+		0: _grant_speed_bonus(22.0, "宝箱：移速 3间")
+		1: _grant_throw_bonus(90.0, "宝箱：弹速 3间")
+		2:
+			player.echo_scroll = true
+			GameManager.echo_scroll_rooms = 3
+			_add_float("宝箱：回声卷轴 3间", player.position + Vector2(-30, -42), Color(1.0, 0.886, 0.459))
+
+# --- Reward card system ---
+
+func _on_reward_chosen(card: Dictionary) -> void:
+	_apply_reward(card)
+	GameManager.change_state(GameManager.State.PLAYING)
+
+func _apply_reward(card: Dictionary) -> void:
+	match card.kind:
+		GameManager.RewardKind.SURVIVAL:
+			var gain := player.max_hp * card.value
+			player.max_hp += gain
+			player.hp = minf(player.max_hp, player.hp + gain)
+		GameManager.RewardKind.MOVE_SPEED:
+			player.speed += card.value
+		GameManager.RewardKind.SHIELD:
+			player.defense = minf(0.35, player.defense + card.value)
+			player.shield_time = maxf(player.shield_time, 12.0)
+		GameManager.RewardKind.CHEST_SPEED:
+			_grant_speed_bonus(card.value, "奖励：移速 3间")
+		GameManager.RewardKind.CHEST_THROW:
+			_grant_throw_bonus(card.value, "奖励：弹速 3间")
+		GameManager.RewardKind.CHEST_ECHO:
+			player.echo_scroll = true
+			GameManager.echo_scroll_rooms = 3
+
+# --- Limited-time powerup decay (all 6 types) ---
+
+func _advance_room_powerups() -> void:
+	if GameManager.room <= 1:
+		return
+
+	# Speed boost
+	if GameManager.speed_boost_rooms > 0:
+		GameManager.speed_boost_rooms -= 1
+		if GameManager.speed_boost_rooms == 0 and GameManager.temp_speed_bonus > 0:
+			player.speed = maxf(120, player.speed - GameManager.temp_speed_bonus)
+			GameManager.temp_speed_bonus = 0
+			_add_float("速度道具失效", player.position + Vector2(-30, -36), Color(0.863, 0.863, 0.863))
+
+	# Throw speed boost
+	if GameManager.throw_boost_rooms > 0:
+		GameManager.throw_boost_rooms -= 1
+		if GameManager.throw_boost_rooms == 0 and GameManager.temp_throw_bonus > 0:
+			player.throw_speed = maxf(400, player.throw_speed - GameManager.temp_throw_bonus)
+			GameManager.temp_throw_bonus = 0
+			_add_float("弹速道具失效", player.position + Vector2(-30, -36), Color(0.863, 0.863, 0.863))
+
+	# Dash cooldown boost
+	if GameManager.dash_boost_rooms > 0:
+		GameManager.dash_boost_rooms -= 1
+		if GameManager.dash_boost_rooms == 0 and GameManager.temp_dash_bonus > 0:
+			player.dash_cooldown += GameManager.temp_dash_bonus
+			GameManager.temp_dash_bonus = 0
+			_add_float("冲刺道具失效", player.position + Vector2(-30, -36), Color(0.863, 0.863, 0.863))
+
+	# Pickup range boost
+	if GameManager.pickup_boost_rooms > 0:
+		GameManager.pickup_boost_rooms -= 1
+		if GameManager.pickup_boost_rooms == 0 and GameManager.temp_pickup_bonus > 0:
+			player.pickup_range = maxf(50, player.pickup_range - GameManager.temp_pickup_bonus)
+			GameManager.temp_pickup_bonus = 0
+			_add_float("拾取道具失效", player.position + Vector2(-30, -36), Color(0.863, 0.863, 0.863))
+
+	# Piercing ink
+	if GameManager.piercing_ink_rooms > 0:
+		GameManager.piercing_ink_rooms -= 1
+		if GameManager.piercing_ink_rooms == 0:
+			player.piercing_ink = false
+			_add_float("穿透墨水失效", player.position + Vector2(-30, -36), Color(0.863, 0.863, 0.863))
+
+	# Echo scroll
+	if GameManager.echo_scroll_rooms > 0:
+		GameManager.echo_scroll_rooms -= 1
+		if GameManager.echo_scroll_rooms == 0:
+			player.echo_scroll = false
+			_add_float("回声卷轴失效", player.position + Vector2(-30, -36), Color(0.863, 0.863, 0.863))
+
+# --- Room cleared & progression ---
+
 func _on_room_cleared() -> void:
+	var accuracy := 1.0 if (GameManager.correct_hits + GameManager.wrong_hits) == 0 else float(GameManager.correct_hits) / (GameManager.correct_hits + GameManager.wrong_hits)
+	if accuracy >= 0.8 and GameManager.collisions <= 1 and GameManager.room_time < 80:
+		GameManager.room_difficulty_scale = minf(1.35, GameManager.room_difficulty_scale + 0.08)
+		GameManager.message = "清房漂亮：下一间更有挑战"
+	elif accuracy < 0.5 or GameManager.collisions >= 4 or GameManager.room_time > 100:
+		GameManager.room_difficulty_scale = maxf(0.74, GameManager.room_difficulty_scale - 0.12)
+		player.hp = minf(player.max_hp, player.hp + 18)
+		GameManager.message = "系统降压：下间减少压迫"
+	else:
+		GameManager.message = "房间清空。"
+
+	var unique_count := 0
+	var seen := {}
+	for w in GameManager.run_words:
+		if w.word not in seen:
+			seen[w.word] = true
+			unique_count += 1
+	if unique_count >= WordBank.bank_words.size():
+		GameManager.change_state(GameManager.State.WIN)
+		return
+
 	GameManager.change_state(GameManager.State.ROOM_CLEAR)
-	GameManager.message = "房间已清除！"
+	SaveManager.save_data.best_room = maxi(SaveManager.save_data.best_room, GameManager.room)
+	SaveManager.save_game()
+
+	# Show reward panel if monster count was > 3 (room >= 4)
+	if GameManager.room >= 4:
+		GameManager.change_state(GameManager.State.REWARD_CHOICE)
+		reward_panel.show_rewards()
+		await reward_panel.reward_chosen
+		GameManager.change_state(GameManager.State.ROOM_CLEAR)
+
+	# 2.2 秒后自动进入下一间
+	await get_tree().create_timer(2.2).timeout
+	_start_room()
 
 # --- Projectile & word-matching core ---
 
@@ -163,11 +374,3 @@ func _return_meaning(meaning: String) -> void:
 
 func _on_player_picked_up(meaning: String) -> void:
 	_add_float("拾取：" + meaning, player.position + Vector2(0, -30), Color(0.918, 0.937, 0.612))
-
-func _on_chest_opened(_chest: Node) -> void:
-	# Chest reward logic will be implemented in Task 7
-	pass
-
-func _try_drop(_monster: Node) -> void:
-	# Drop logic will be implemented in Task 7
-	pass

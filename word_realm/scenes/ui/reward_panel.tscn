@@ -1,0 +1,49 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/reward_panel.gd" id="1_script"]
+
+[node name="RewardPanel" type="Control"]
+visible = false
+layout_mode = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1280.0
+offset_bottom = 720.0
+color = Color(0, 0, 0, 0.65)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 0
+offset_left = 440.0
+offset_top = 100.0
+offset_right = 840.0
+offset_bottom = 140.0
+horizontal_alignment = 1
+text = "选择奖励卡 (按 1/2/3 快速选择)"
+
+[node name="Card1" type="Button" parent="."]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 200.0
+offset_right = 420.0
+offset_bottom = 520.0
+
+[node name="Card2" type="Button" parent="."]
+layout_mode = 0
+offset_left = 460.0
+offset_top = 200.0
+offset_right = 780.0
+offset_bottom = 520.0
+
+[node name="Card3" type="Button" parent="."]
+layout_mode = 0
+offset_left = 820.0
+offset_top = 200.0
+offset_right = 1140.0
+offset_bottom = 520.0
