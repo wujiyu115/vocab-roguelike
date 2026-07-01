@@ -4,6 +4,7 @@ extends RefCounted
 const OBSTACLE_SCENE := preload("res://scenes/game/obstacle.tscn")
 const MEANING_TOKEN_SCENE := preload("res://scenes/game/meaning_token.tscn")
 const CHEST_SCENE := preload("res://scenes/game/chest.tscn")
+const MONSTER_SCENE := preload("res://scenes/game/monster.tscn")
 
 const W := 1280
 const H := 720
@@ -12,7 +13,7 @@ var obstacles: Array[Rect2] = []
 
 func generate_room(parent: Node2D, player_pos: Vector2) -> Dictionary:
 	obstacles.clear()
-	var result := {"obstacles": [], "meanings": [], "chests": [], "word_entries": []}
+	var result := {"obstacles": [], "meanings": [], "chests": [], "word_entries": [], "monsters": []}
 
 	# 障碍物生成
 	var theme_index := GameManager.get_theme_index()
@@ -48,6 +49,16 @@ func generate_room(parent: Node2D, player_pos: Vector2) -> Dictionary:
 
 	var chosen := WordBank.pick_room_words(target_count)
 	result.word_entries = chosen
+
+	# 生成怪物
+	for entry in chosen:
+		entry.seen_count += 1
+		entry.last_seen_room = GameManager.room
+		var monster := MONSTER_SCENE.instantiate()
+		var mkind := _pick_monster_kind(entry)
+		monster.setup(entry, mkind, _random_free_position(monster.radius + 8, player_pos))
+		parent.add_child(monster)
+		result.monsters.append(monster)
 
 	# 生成释义词块
 	var used_meanings: Array[String] = []
@@ -199,6 +210,14 @@ func _random_free_position(radius: float, player_pos: Vector2) -> Vector2:
 			if not _is_point_blocked(p, radius) and p.distance_to(player_pos) >= 90:
 				return p
 	return player_pos
+
+func _pick_monster_kind(entry: Dictionary) -> int:
+	var roll := randi_range(0, 99)
+	var tier := GameManager.room + entry.difficulty
+	if tier > 8 and roll < 18: return GameManager.MonsterKind.SHIELD
+	if tier > 6 and roll < 38: return GameManager.MonsterKind.DASHER
+	if tier > 4 and roll < 68: return GameManager.MonsterKind.CHASER
+	return GameManager.MonsterKind.WANDERER
 
 func _required_hits(entry: Dictionary) -> int:
 	var max_hp := 2.0 if (GameManager.room > 4 or entry.difficulty >= 4) else 1.0

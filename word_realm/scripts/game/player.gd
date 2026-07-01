@@ -37,6 +37,9 @@ var fire_anim_time := 0.0
 var move_target := Vector2.ZERO
 var has_move_target := false
 
+func _ready() -> void:
+	add_to_group("player")
+
 func _physics_process(delta: float) -> void:
 	_update_timers(delta)
 	var input := _get_move_input()
