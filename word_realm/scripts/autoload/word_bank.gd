@@ -55,8 +55,8 @@ func pick_room_words(count: int) -> Array[Dictionary]:
 		var total := 0.0
 		for w in pool:
 			var target_difficulty := 1.0 + room * 0.42
-			var difficulty_score := 40.0 - absf(w.difficulty - target_difficulty) * 9.0
-			var weight := maxf(6.0, difficulty_score)
+			var difficulty_score: float = 40.0 - absf(w.difficulty - target_difficulty) * 9.0
+			var weight: float = maxf(6.0, difficulty_score)
 			if w.seen_count == 0:
 				weight += 30.0
 			weight += w.wrong_count * 20.0

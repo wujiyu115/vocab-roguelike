@@ -51,7 +51,7 @@ func _physics_process(delta: float) -> void:
 	var player := _get_player()
 	if player == null:
 		return
-	var speed := 55.0 + GameManager.room * 3 + entry.difficulty * 8.0
+	var speed: float = 55.0 + GameManager.room * 3 + entry.difficulty * 8.0
 	if kind == GameManager.MonsterKind.CHASER: speed += 28
 	if kind == GameManager.MonsterKind.GHOST: speed += 38
 	if rage_timer > 0: speed *= 1.8
@@ -104,7 +104,7 @@ func _update_shooting(delta: float, player: Node2D) -> void:
 	if shoot_timer > 0 or dist > 520 or dist < 70:
 		return
 	var dir := (player.position - position).normalized()
-	var bullet_speed := 210.0 + GameManager.room * 8 + entry.difficulty * 12.0
+	var bullet_speed: float = 210.0 + GameManager.room * 8 + entry.difficulty * 12.0
 	var data := {
 		"position": position + dir * (radius + 12),
 		"velocity": dir * bullet_speed,
@@ -118,7 +118,7 @@ func _is_elite() -> bool:
 
 func take_hit(meaning: String, universal: bool) -> Dictionary:
 	# Ref: WordRogue.cs:1866-1919 ResolveHit
-	var correct := universal or meaning == entry.meaning
+	var correct: bool = universal or meaning == entry.meaning
 	if correct:
 		GameManager.correct_hits += 1
 		SaveManager.save_data.total_correct += 1

@@ -104,7 +104,7 @@ func _clear_entities() -> void:
 
 func _load_background() -> void:
 	var theme_index := GameManager.get_theme_index()
-	var bg_name := GameManager.background_names[theme_index]
+	var bg_name: String = GameManager.background_names[theme_index]
 	var tex := load("res://assets/backgrounds/" + bg_name)
 	if tex:
 		background.texture = tex
@@ -202,10 +202,10 @@ func _check_monster_collisions() -> void:
 			continue
 		var dist := player.position.distance_to(monster.position)
 		if dist < monster.radius + player.radius and player.invulnerable <= 0:
-			var damage := 12.0 + monster.entry.difficulty * 1.8
+			var damage: float = 12.0 + monster.entry.difficulty * 1.8
 			player.take_damage(damage)
 			GameManager.collisions += 1
-			var push := (player.position - monster.position).normalized()
+			var push: Vector2 = (player.position - monster.position).normalized()
 			if push.length() < 0.001: push = Vector2(1, 0)
 			player.position += push * 34
 
@@ -332,7 +332,7 @@ func _on_reward_chosen(card: Dictionary) -> void:
 func _apply_reward(card: Dictionary) -> void:
 	match card.kind:
 		GameManager.RewardKind.SURVIVAL:
-			var gain := player.max_hp * card.value
+			var gain: float = player.max_hp * card.value
 			player.max_hp += gain
 			player.hp = minf(player.max_hp, player.hp + gain)
 		GameManager.RewardKind.MOVE_SPEED:
@@ -457,7 +457,7 @@ func _on_projectile_hit(area: Area2D, proj: Node) -> void:
 		return
 	proj.hit_monsters.append(monster)
 
-	var result := monster.take_hit(proj.meaning, proj.universal)
+	var result: Dictionary = monster.take_hit(proj.meaning, proj.universal)
 	if result.correct:
 		if result.get("shield_break", false):
 			_add_float("破盾" if not proj.universal else "回声破盾", monster.position + Vector2(0, -36), Color(0.478, 0.827, 1.0))
@@ -490,7 +490,7 @@ func _add_float(text: String, pos: Vector2, color: Color) -> void:
 func _return_meaning(meaning: String) -> void:
 	if meaning.is_empty() or current_monsters.is_empty():
 		return
-	var correct := current_monsters.any(func(m): return is_instance_valid(m) and m.entry.meaning == meaning)
+	var correct: bool = current_monsters.any(func(m): return is_instance_valid(m) and m.entry.meaning == meaning)
 	var token := MEANING_TOKEN_SCENE.instantiate()
 	token.setup(meaning, correct)
 	token.position = room_generator._random_free_position(20, player.position)

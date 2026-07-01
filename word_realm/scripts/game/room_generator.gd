@@ -160,7 +160,7 @@ func _room_navigation_valid(player_pos: Vector2) -> bool:
 	seen[start] = true
 	var visited := 0
 	while not queue.is_empty():
-		var p := queue.pop_front()
+		var p: Vector2i = queue.pop_front()
 		visited += 1
 		for offset in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
 			var n := p + offset
@@ -213,14 +213,14 @@ func _random_free_position(radius: float, player_pos: Vector2) -> Vector2:
 
 func _pick_monster_kind(entry: Dictionary) -> int:
 	var roll := randi_range(0, 99)
-	var tier := GameManager.room + entry.difficulty
+	var tier: int = GameManager.room + entry.difficulty
 	if tier > 8 and roll < 18: return GameManager.MonsterKind.SHIELD
 	if tier > 6 and roll < 38: return GameManager.MonsterKind.DASHER
 	if tier > 4 and roll < 68: return GameManager.MonsterKind.CHASER
 	return GameManager.MonsterKind.WANDERER
 
 func _required_hits(entry: Dictionary) -> int:
-	var max_hp := 2.0 if (GameManager.room > 4 or entry.difficulty >= 4) else 1.0
+	var max_hp: float = 2.0 if (GameManager.room > 4 or entry.difficulty >= 4) else 1.0
 	var needed := ceili(max_hp)
 	if entry.get("shield", false):
 		needed += 1
