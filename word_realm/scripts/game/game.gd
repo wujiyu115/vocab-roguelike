@@ -15,6 +15,7 @@ const MEMORY_BOOK_SCENE := preload("res://scenes/ui/memory_book.tscn")
 @onready var hud: CanvasLayer = $HUD
 @onready var pause_menu: Control = $UILayer/PauseMenu
 @onready var game_over_screen: Control = $UILayer/GameOverScreen
+@onready var touch_controls: CanvasLayer = $TouchControls
 
 var room_generator := RoomGenerator.new()
 var current_meanings: Array = []
@@ -42,6 +43,15 @@ func _ready():
 	# Memory book (instanced at runtime, added to UILayer)
 	memory_book = MEMORY_BOOK_SCENE.instantiate()
 	$UILayer.add_child(memory_book)
+
+	# Touch controls setup (mobile)
+	if GameManager.is_mobile:
+		touch_controls.setup(player)
+		touch_controls.move_to.connect(func(pos): player.set_move_target(pos))
+		touch_controls.fire_drag.connect(func(dir): player.fire_held_meaning(dir))
+		touch_controls.dash_pressed.connect(func(): player.try_dash())
+		touch_controls.interact_pressed.connect(func(): player.try_interact(current_meanings, current_chests))
+		touch_controls.pause_pressed.connect(func(): _toggle_pause())
 
 	_start_room()
 

@@ -7,6 +7,9 @@ var glow_timer := 0.0
 
 @onready var label: Label = $Label
 
+func _ready() -> void:
+	add_to_group("meaning_tokens")
+
 func setup(text: String, correct: bool) -> void:
 	meaning = text
 	correct_for_room = correct
