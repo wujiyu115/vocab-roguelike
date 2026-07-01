@@ -3,6 +3,9 @@ extends Node2D
 
 const RoomGenerator := preload("res://scripts/game/room_generator.gd")
 const ENEMY_PROJECTILE_SCENE := preload("res://scenes/game/enemy_projectile.tscn")
+const PROJECTILE_SCENE := preload("res://scenes/game/projectile.tscn")
+const FLOATING_TEXT_SCENE := preload("res://scenes/game/floating_text.tscn")
+const MEANING_TOKEN_SCENE := preload("res://scenes/game/meaning_token.tscn")
 
 @onready var player: CharacterBody2D = $Entities/Player
 @onready var background: Sprite2D = $Background
@@ -13,6 +16,9 @@ var current_chests: Array = []
 var current_monsters: Array = []
 
 func _ready():
+	player.fired.connect(_on_player_fired)
+	player.picked_up.connect(_on_player_picked_up)
+	player.interacted_chest.connect(_on_chest_opened)
 	player.position = Vector2(GameManager.W / 2, GameManager.H / 2 + 120)
 	_start_room()
 
@@ -97,3 +103,71 @@ func _on_monster_shot(data: Dictionary) -> void:
 func _on_room_cleared() -> void:
 	GameManager.change_state(GameManager.State.ROOM_CLEAR)
 	GameManager.message = "房间已清除！"
+
+# --- Projectile & word-matching core ---
+
+func _on_player_fired(data: Dictionary) -> void:
+	var proj := PROJECTILE_SCENE.instantiate()
+	proj.setup(data)
+	proj.area_entered.connect(_on_projectile_hit.bind(proj))
+	$Entities.add_child(proj)
+
+func _on_projectile_hit(area: Area2D, proj: Node) -> void:
+	# Check if the area belongs to a monster's HitArea
+	var monster := area.get_parent()
+	if not monster is CharacterBody2D or not monster.has_method("take_hit"):
+		return
+	if monster in proj.hit_monsters:
+		return
+	proj.hit_monsters.append(monster)
+
+	var result := monster.take_hit(proj.meaning, proj.universal)
+	if result.correct:
+		if result.get("shield_break", false):
+			_add_float("破盾" if not proj.universal else "回声破盾", monster.position + Vector2(0, -36), Color(0.478, 0.827, 1.0))
+		elif result.get("killed", false):
+			_add_float("记住 " + monster.entry.word, monster.position + Vector2(0, -58), Color.WHITE)
+			_try_drop(monster)
+		else:
+			_add_float("正确：" + monster.entry.meaning if not proj.universal else "回声命中", monster.position + Vector2(0, -38), Color(0.596, 0.961, 0.706))
+
+		if GameManager.combo >= 3:
+			player.hp = minf(player.max_hp, player.hp + 4)
+			_add_float("连击+" + str(GameManager.combo), player.position + Vector2(0, -34), Color(0.580, 1.0, 0.651))
+
+		proj.return_on_miss = false
+		if not proj.piercing:
+			proj.queue_free()
+	else:
+		_add_float("错配！%s = %s" % [monster.entry.word, monster.entry.meaning], monster.position + Vector2(0, -38), Color(1.0, 0.824, 0.369))
+		if GameManager.streak_wrong == 0:
+			_add_float("房间躁动", Vector2(GameManager.W / 2 - 40, 120), Color(1.0, 0.510, 0.510))
+		# Return meaning token to the ground
+		_return_meaning(proj.meaning)
+		proj.queue_free()
+
+func _add_float(text: String, pos: Vector2, color: Color) -> void:
+	var ft := FLOATING_TEXT_SCENE.instantiate()
+	ft.show_text(text, pos, color)
+	$Entities.add_child(ft)
+
+func _return_meaning(meaning: String) -> void:
+	if meaning.is_empty() or current_monsters.is_empty():
+		return
+	var correct := current_monsters.any(func(m): return is_instance_valid(m) and m.entry.meaning == meaning)
+	var token := MEANING_TOKEN_SCENE.instantiate()
+	token.setup(meaning, correct)
+	token.position = room_generator._random_free_position(20, player.position)
+	$Entities.add_child(token)
+	current_meanings.append(token)
+
+func _on_player_picked_up(meaning: String) -> void:
+	_add_float("拾取：" + meaning, player.position + Vector2(0, -30), Color(0.918, 0.937, 0.612))
+
+func _on_chest_opened(_chest: Node) -> void:
+	# Chest reward logic will be implemented in Task 7
+	pass
+
+func _try_drop(_monster: Node) -> void:
+	# Drop logic will be implemented in Task 7
+	pass
