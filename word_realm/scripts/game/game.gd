@@ -7,15 +7,20 @@ const PROJECTILE_SCENE := preload("res://scenes/game/projectile.tscn")
 const FLOATING_TEXT_SCENE := preload("res://scenes/game/floating_text.tscn")
 const MEANING_TOKEN_SCENE := preload("res://scenes/game/meaning_token.tscn")
 const DROP_ITEM_SCENE := preload("res://scenes/game/drop_item.tscn")
+const MEMORY_BOOK_SCENE := preload("res://scenes/ui/memory_book.tscn")
 
 @onready var player: CharacterBody2D = $Entities/Player
 @onready var background: Sprite2D = $Background
 @onready var reward_panel: Control = $HUD/RewardPanel
+@onready var hud: CanvasLayer = $HUD
+@onready var pause_menu: Control = $UILayer/PauseMenu
+@onready var game_over_screen: Control = $UILayer/GameOverScreen
 
 var room_generator := RoomGenerator.new()
 var current_meanings: Array = []
 var current_chests: Array = []
 var current_monsters: Array = []
+var memory_book: Control = null
 
 func _ready():
 	player.fired.connect(_on_player_fired)
@@ -23,6 +28,21 @@ func _ready():
 	player.interacted_chest.connect(_on_chest_opened)
 	reward_panel.reward_chosen.connect(_on_reward_chosen)
 	player.position = Vector2(GameManager.W / 2, GameManager.H / 2 + 120)
+
+	# HUD setup
+	hud.setup(player)
+
+	# Pause menu signals
+	pause_menu.resumed.connect(_on_pause_resumed)
+	pause_menu.quit_to_menu.connect(_quit_to_menu)
+
+	# Game over screen signals
+	game_over_screen.return_to_menu.connect(_quit_to_menu)
+
+	# Memory book (instanced at runtime, added to UILayer)
+	memory_book = MEMORY_BOOK_SCENE.instantiate()
+	$UILayer.add_child(memory_book)
+
 	_start_room()
 
 func _start_room() -> void:
@@ -56,7 +76,14 @@ func _load_background() -> void:
 		background.texture = tex
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed:
+		match event.keycode:
+			KEY_ESCAPE: _toggle_pause()
+			KEY_TAB: _toggle_memory_book()
+
 	if GameManager.is_mobile:
+		return
+	if GameManager.current_state != GameManager.State.PLAYING:
 		return
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
@@ -69,8 +96,58 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if GameManager.current_state != GameManager.State.PLAYING:
 		return
+	# Check player death
+	if player and is_instance_valid(player) and player.hp <= 0:
+		_on_player_died()
+		return
 	_check_monster_collisions()
 	_check_enemy_projectile_hits()
+
+# --- Pause system ---
+
+func _toggle_pause() -> void:
+	if GameManager.current_state == GameManager.State.PLAYING:
+		GameManager.change_state(GameManager.State.PAUSED)
+		get_tree().paused = true
+		pause_menu.visible = true
+	elif GameManager.current_state == GameManager.State.PAUSED:
+		_on_pause_resumed()
+
+func _on_pause_resumed() -> void:
+	GameManager.change_state(GameManager.State.PLAYING)
+	get_tree().paused = false
+	pause_menu.visible = false
+
+func _toggle_memory_book() -> void:
+	if memory_book:
+		memory_book.toggle()
+
+# --- Game over / win ---
+
+func _on_player_died() -> void:
+	GameManager.change_state(GameManager.State.GAME_OVER)
+	SaveManager.save_data.best_room = maxi(SaveManager.save_data.best_room, GameManager.room)
+	SaveManager.clear_continue()
+	SaveManager.save_game()
+	var msg := "你在第 %d 间倒下了。共学习 %d 个单词。" % [GameManager.room, GameManager.run_words.size()]
+	game_over_screen.show_screen("游戏结束", msg, GameManager.run_words)
+
+func _on_game_won() -> void:
+	GameManager.change_state(GameManager.State.WIN)
+	SaveManager.save_data.best_room = maxi(SaveManager.save_data.best_room, GameManager.room)
+	SaveManager.clear_continue()
+	SaveManager.save_game()
+	var msg := "恭喜通关！你掌握了所有 %d 个单词！" % [GameManager.run_words.size()]
+	game_over_screen.show_screen("通关", msg, GameManager.run_words)
+
+func _quit_to_menu() -> void:
+	get_tree().paused = false
+	if GameManager.current_state in [GameManager.State.PLAYING, GameManager.State.PAUSED, GameManager.State.ROOM_CLEAR]:
+		SaveManager.save_continue_state(player.get_player_data())
+	GameManager.change_state(GameManager.State.MENU)
+	get_tree().change_scene_to_file("res://scenes/menu/main_menu.tscn")
+
+# --- Monster collision & projectile checks ---
 
 func _check_monster_collisions() -> void:
 	for monster in current_monsters:
@@ -297,7 +374,7 @@ func _on_room_cleared() -> void:
 			seen[w.word] = true
 			unique_count += 1
 	if unique_count >= WordBank.bank_words.size():
-		GameManager.change_state(GameManager.State.WIN)
+		_on_game_won()
 		return
 
 	GameManager.change_state(GameManager.State.ROOM_CLEAR)
