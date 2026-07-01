@@ -1,6 +1,8 @@
 # scripts/game/projectile.gd
 extends Area2D
 
+signal expired(meaning: String)
+
 var meaning := ""
 var vel := Vector2.ZERO
 var life := 1.55
@@ -27,6 +29,5 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 
 func _on_expired() -> void:
-	# Called when projectile leaves the screen or runs out of life.
-	# If return_on_miss is true, game.gd handles returning the meaning token.
-	pass
+	if return_on_miss and meaning.length() > 0:
+		expired.emit(meaning)

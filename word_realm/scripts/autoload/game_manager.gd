@@ -1,7 +1,7 @@
 # scripts/autoload/game_manager.gd
 extends Node
 
-signal state_changed(new_state: String)
+signal state_changed(new_state: int)
 
 enum State { MENU, PLAYING, ROOM_CLEAR, REWARD_CHOICE, GAME_OVER, WIN, PAUSED }
 enum MonsterKind { WANDERER, CHASER, DASHER, SHIELD, GHOST }

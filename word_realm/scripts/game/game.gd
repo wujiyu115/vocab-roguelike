@@ -77,7 +77,13 @@ func _start_room() -> void:
 	_advance_room_powerups()
 	_load_background()
 	_clear_entities()
+	GameManager.room_time = 0.0
+	GameManager.correct_hits = 0
+	GameManager.wrong_hits = 0
+	GameManager.collisions = 0
 	var result := room_generator.generate_room($Entities, player.position)
+	for entry in result.word_entries:
+		GameManager.run_words.append(entry)
 	current_meanings = result.meanings
 	current_chests = result.chests
 	current_monsters = result.monsters
@@ -107,7 +113,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_ESCAPE: _toggle_pause()
-			KEY_TAB: _toggle_memory_book()
 
 	if GameManager.is_mobile:
 		return
@@ -115,6 +120,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
+			KEY_TAB: _toggle_memory_book()
 			KEY_SPACE: player.try_dash()
 			KEY_E: player.try_interact(current_meanings, current_chests)
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -124,6 +130,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if GameManager.current_state != GameManager.State.PLAYING:
 		return
+	GameManager.room_time += delta
 	# Check player death
 	if player and is_instance_valid(player) and player.hp <= 0:
 		_on_player_died()
@@ -204,7 +211,7 @@ func _check_monster_collisions() -> void:
 
 func _check_enemy_projectile_hits() -> void:
 	for child in $Entities.get_children():
-		if child is Area2D and child.has_method("setup") and child.get("vel") != null:
+		if child is Area2D and child.get("is_enemy") == true:
 			var dist := player.position.distance_to(child.position)
 			if dist < player.radius + 6 and player.invulnerable <= 0:
 				player.take_damage(child.damage)
@@ -438,6 +445,7 @@ func _on_player_fired(data: Dictionary) -> void:
 	var proj := PROJECTILE_SCENE.instantiate()
 	proj.setup(data)
 	proj.area_entered.connect(_on_projectile_hit.bind(proj))
+	proj.expired.connect(func(m): _return_meaning(m))
 	$Entities.add_child(proj)
 
 func _on_projectile_hit(area: Area2D, proj: Node) -> void:

@@ -1,0 +1,4 @@
+[gd_resource type="SystemFont" format=3]
+
+[resource]
+font_names = PackedStringArray("Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", "Source Han Sans CN", "sans-serif")

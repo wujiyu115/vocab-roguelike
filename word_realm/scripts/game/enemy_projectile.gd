@@ -1,6 +1,7 @@
 # scripts/game/enemy_projectile.gd
 extends Area2D
 
+var is_enemy := true
 var vel := Vector2.ZERO
 var life := 3.2
 var damage := 10.0

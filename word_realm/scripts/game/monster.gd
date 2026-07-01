@@ -158,7 +158,7 @@ func take_hit(meaning: String, universal: bool) -> Dictionary:
 func _update_visuals() -> void:
 	shield_sprite.visible = shield_up
 	if max_hp >= 2:
-		hp_bar.value = hp / max_hp
+		hp_bar.value = hp / max_hp * 100
 	if rage_timer > 0:
 		modulate = Color(1.5, 0.6, 0.6) if fmod(rage_timer, 0.3) < 0.15 else Color.WHITE
 	else:
