@@ -69,7 +69,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				move_to.emit(world_pos)
 		else:
 			if dragging:
-				var drag_dir := (event.position - drag_start).normalized()
+				var drag_dir: Vector2 = (event.position - drag_start).normalized()
 				if (event.position - drag_start).length() > 30:
 					fire_drag.emit(drag_dir)
 				dragging = false
