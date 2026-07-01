@@ -1,0 +1,8 @@
+Download Noto Sans CJK font and place it in this directory.
+
+Recommended: NotoSansSC-Regular.ttf (Simplified Chinese)
+
+Download from: https://github.com/googlefonts/noto-cjk/releases
+
+After downloading, place the .ttf file here:
+  word_realm/assets/fonts/NotoSansSC-Regular.ttf
