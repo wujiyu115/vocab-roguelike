@@ -163,7 +163,7 @@ func _room_navigation_valid(player_pos: Vector2) -> bool:
 		var p: Vector2i = queue.pop_front()
 		visited += 1
 		for offset in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
-			var n := p + offset
+			var n: Vector2i = p + offset
 			if n.x < 0 or n.y < 0 or n.x >= cols or n.y >= rows:
 				continue
 			if blocked.get(n, true) or seen.get(n, false):
