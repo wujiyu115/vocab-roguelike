@@ -25,3 +25,4 @@ obj/
 *.suo
 Thumbs.db
 Desktop.ini
+.superpowers/
