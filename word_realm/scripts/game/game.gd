@@ -53,6 +53,23 @@ func _ready():
 		touch_controls.interact_pressed.connect(func(): player.try_interact(current_meanings, current_chests))
 		touch_controls.pause_pressed.connect(func(): _toggle_pause())
 
+	# Restore continue state if available
+	var cs := SaveManager.get_continue_state()
+	if not cs.is_empty() and SaveManager.has_continue():
+		player.load_continue_state(cs)
+		GameManager.piercing_ink_rooms = cs.get("piercing_ink_rooms", 0)
+		GameManager.echo_scroll_rooms = cs.get("echo_scroll_rooms", 0)
+		GameManager.speed_boost_rooms = cs.get("speed_boost_rooms", 0)
+		GameManager.throw_boost_rooms = cs.get("throw_boost_rooms", 0)
+		GameManager.dash_boost_rooms = cs.get("dash_boost_rooms", 0)
+		GameManager.pickup_boost_rooms = cs.get("pickup_boost_rooms", 0)
+		GameManager.temp_speed_bonus = cs.get("temp_speed_bonus", 0.0)
+		GameManager.temp_throw_bonus = cs.get("temp_throw_bonus", 0.0)
+		GameManager.temp_dash_bonus = cs.get("temp_dash_bonus", 0.0)
+		GameManager.temp_pickup_bonus = cs.get("temp_pickup_bonus", 0.0)
+		player.piercing_ink = GameManager.piercing_ink_rooms > 0
+		player.echo_scroll = GameManager.echo_scroll_rooms > 0
+
 	_start_room()
 
 func _start_room() -> void:
@@ -68,6 +85,7 @@ func _start_room() -> void:
 		monster.died.connect(_on_monster_died)
 		monster.shot.connect(_on_monster_shot)
 	GameManager.message = "第 %d 间：%s" % [GameManager.room, GameManager.get_current_theme().name]
+	SaveManager.save_continue_state(player.get_player_data())
 
 func _clear_entities() -> void:
 	for child in $Entities.get_children():
@@ -132,9 +150,21 @@ func _toggle_memory_book() -> void:
 	if memory_book:
 		memory_book.toggle()
 
+# --- Window / platform notifications ---
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if GameManager.current_state in [GameManager.State.PLAYING, GameManager.State.ROOM_CLEAR, GameManager.State.PAUSED]:
+			SaveManager.save_continue_state(player.get_player_data())
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_toggle_pause()
+
 # --- Game over / win ---
 
 func _on_player_died() -> void:
+	for monster in current_monsters:
+		if is_instance_valid(monster):
+			monster.entry.death_count += 1
 	GameManager.change_state(GameManager.State.GAME_OVER)
 	SaveManager.save_data.best_room = maxi(SaveManager.save_data.best_room, GameManager.room)
 	SaveManager.clear_continue()
