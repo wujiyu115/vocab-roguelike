@@ -223,6 +223,7 @@ func _toggle_fullscreen() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 func _on_difficulty(mode: int, label_name: String) -> void:
+	AudioManager.play("ui_click")
 	GameManager.selected_mode = mode
 	GameManager.selected_mode_name = label_name
 	_update_selection()
@@ -248,6 +249,7 @@ func _update_stats() -> void:
 	stats_label.text = "词库：%d/%d  最高纪录：第 %d 间  正确 %d  错误 %d    Enter 开始  F11 全屏" % [bank, total, best, correct, wrong]
 
 func _on_start() -> void:
+	AudioManager.play("ui_click")
 	WordBank.set_difficulty(GameManager.selected_mode)
 	GameManager.reset_run()
 	GameManager.change_state(GameManager.State.PLAYING)
@@ -257,6 +259,7 @@ func _on_start() -> void:
 func _on_continue() -> void:
 	if not SaveManager.has_continue():
 		return
+	AudioManager.play("ui_click")
 	var cs := SaveManager.get_continue_state()
 	GameManager.selected_mode = cs.get("mode", 2)
 	GameManager.selected_mode_name = cs.get("mode_name", "简单 / 高中词汇")

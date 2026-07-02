@@ -516,6 +516,7 @@ func _on_projectile_hit(area: Area2D, proj: Node) -> void:
 
 	var result: Dictionary = monster.take_hit(proj.meaning, proj.universal)
 	if result.correct:
+		AudioManager.play("hit_correct")
 		if result.get("shield_break", false):
 			_add_float("破盾" if not proj.universal else "回声破盾", monster.position + Vector2(0, -36), Color(0.478, 0.827, 1.0))
 		elif result.get("killed", false):
