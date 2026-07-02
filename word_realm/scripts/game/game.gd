@@ -484,8 +484,8 @@ func _on_projectile_hit(area: Area2D, proj: Node) -> void:
 
 func _add_float(text: String, pos: Vector2, color: Color) -> void:
 	var ft := FLOATING_TEXT_SCENE.instantiate()
-	ft.show_text(text, pos, color)
 	$Entities.add_child(ft)
+	ft.show_text(text, pos, color)
 
 func _return_meaning(meaning: String) -> void:
 	if meaning.is_empty() or current_monsters.is_empty():

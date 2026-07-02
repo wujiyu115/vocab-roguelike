@@ -37,13 +37,13 @@ func setup(word_entry: Dictionary, monster_kind: int, pos: Vector2) -> void:
 
 	var shape := CircleShape2D.new()
 	shape.radius = radius
-	collision_shape.shape = shape
+	$CollisionShape2D.shape = shape
 	$HitArea/CollisionShape2D.shape = shape.duplicate()
 
-	word_label.text = entry.word
+	$WordLabel.text = entry.word
 	think_timer = randf() * 1.2
 	shoot_timer = 1.4 + randf() * 2.3
-	hp_bar.visible = max_hp >= 2
+	$HpBar.visible = max_hp >= 2
 
 func _physics_process(delta: float) -> void:
 	if rage_timer > 0:

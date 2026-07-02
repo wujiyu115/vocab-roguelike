@@ -13,7 +13,7 @@ func _ready() -> void:
 func setup(text: String, correct: bool) -> void:
 	meaning = text
 	correct_for_room = correct
-	label.text = text
+	$Label.text = text
 
 func _process(delta: float) -> void:
 	glow_timer += delta

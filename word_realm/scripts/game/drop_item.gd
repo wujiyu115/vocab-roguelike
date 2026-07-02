@@ -20,7 +20,7 @@ const DROP_NAMES := {
 func setup(drop_kind: int, pos: Vector2) -> void:
 	kind = drop_kind
 	position = pos
-	label.text = DROP_NAMES.get(kind, "道具")
+	$Label.text = DROP_NAMES.get(kind, "道具")
 
 func _physics_process(delta: float) -> void:
 	life -= delta
