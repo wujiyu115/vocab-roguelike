@@ -8,6 +8,7 @@ const FLOATING_TEXT_SCENE := preload("res://scenes/game/floating_text.tscn")
 const MEANING_TOKEN_SCENE := preload("res://scenes/game/meaning_token.tscn")
 const DROP_ITEM_SCENE := preload("res://scenes/game/drop_item.tscn")
 const MEMORY_BOOK_SCENE := preload("res://scenes/ui/memory_book.tscn")
+const TILES_SHEET := preload("res://assets/sprites/theme_tiles_walls.png")
 
 @onready var player: CharacterBody2D = $Entities/Player
 @onready var background: Sprite2D = $Background
@@ -108,6 +109,62 @@ func _load_background() -> void:
 	var tex := load("res://assets/backgrounds/" + bg_name)
 	if tex:
 		background.texture = tex
+	_build_walls(theme_index)
+
+func _build_walls(theme_index: int) -> void:
+	var walls_node: Node2D = $Walls
+	for child in walls_node.get_children():
+		child.queue_free()
+
+	var wall_tex := SpriteUtils.atlas_cell(TILES_SHEET, 4, 4, 8 + theme_index)
+	var tw := wall_tex.get_width()
+	var th := wall_tex.get_height()
+
+	# top wall strip (height 58)
+	var top_h := 58
+	var x := 0
+	while x < GameManager.W:
+		var spr := Sprite2D.new()
+		spr.texture = wall_tex
+		spr.centered = false
+		spr.position = Vector2(x, 0)
+		spr.scale = Vector2(minf(1.0, float(GameManager.W - x) / tw), float(top_h) / th)
+		walls_node.add_child(spr)
+		x += tw
+
+	# bottom wall strip (height 30)
+	var bot_y := GameManager.H - 30
+	x = 0
+	while x < GameManager.W:
+		var spr := Sprite2D.new()
+		spr.texture = wall_tex
+		spr.centered = false
+		spr.position = Vector2(x, bot_y)
+		spr.scale = Vector2(minf(1.0, float(GameManager.W - x) / tw), 30.0 / th)
+		walls_node.add_child(spr)
+		x += tw
+
+	# left wall strip (width 28)
+	var y := top_h
+	while y < bot_y:
+		var spr := Sprite2D.new()
+		spr.texture = wall_tex
+		spr.centered = false
+		spr.position = Vector2(0, y)
+		spr.scale = Vector2(28.0 / tw, minf(1.0, float(bot_y - y) / th))
+		walls_node.add_child(spr)
+		y += th
+
+	# right wall strip (width 28)
+	y = top_h
+	while y < bot_y:
+		var spr := Sprite2D.new()
+		spr.texture = wall_tex
+		spr.centered = false
+		spr.position = Vector2(GameManager.W - 28, y)
+		spr.scale = Vector2(28.0 / tw, minf(1.0, float(bot_y - y) / th))
+		walls_node.add_child(spr)
+		y += th
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:

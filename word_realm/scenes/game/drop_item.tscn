@@ -12,6 +12,8 @@ collision_mask = 1
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_drop")
 
+[node name="Sprite2D" type="Sprite2D" parent="."]
+
 [node name="Label" type="Label" parent="."]
 offset_left = -40.0
 offset_top = -28.0

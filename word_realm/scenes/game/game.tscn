@@ -14,6 +14,8 @@ script = ExtResource("1_script")
 [node name="Background" type="Sprite2D" parent="."]
 centered = false
 
+[node name="Walls" type="Node2D" parent="."]
+
 [node name="Entities" type="Node2D" parent="."]
 
 [node name="Player" parent="Entities" instance=ExtResource("2_player")]

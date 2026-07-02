@@ -4,6 +4,8 @@ extends CharacterBody2D
 signal died(monster: Node)
 signal shot(data: Dictionary)
 
+const CHARACTERS_SHEET := preload("res://assets/sprites/characters_monsters.png")
+
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var word_label: Label = $WordLabel
 @onready var hp_bar: ProgressBar = $HpBar
@@ -41,9 +43,30 @@ func setup(word_entry: Dictionary, monster_kind: int, pos: Vector2) -> void:
 	$HitArea/CollisionShape2D.shape = shape.duplicate()
 
 	$WordLabel.text = entry.word
+	_style_word_label()
 	think_timer = randf() * 1.2
 	shoot_timer = 1.4 + randf() * 2.3
 	$HpBar.visible = max_hp >= 2
+
+func _style_word_label() -> void:
+	var lbl: Label = $WordLabel
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.10, 0.18, 0.55)
+	style.set_corner_radius_all(3)
+	style.content_margin_left = 6
+	style.content_margin_right = 6
+	style.content_margin_top = 2
+	style.content_margin_bottom = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.85, 0.25, 0.20, 0.6)
+	lbl.add_theme_stylebox_override("normal", style)
+	lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.85))
+	lbl.add_theme_font_size_override("font_size", 14)
+
+	var target_w := radius * 2.6 * 1.22
+	var target_h := radius * 2.6
+	SpriteUtils.set_sprite($Sprite2D, CHARACTERS_SHEET, 4, 2, _sprite_index(), target_w, target_h)
+	$Sprite2D.position.y = -4
 
 func _physics_process(delta: float) -> void:
 	if rage_timer > 0:
@@ -156,13 +179,28 @@ func take_hit(meaning: String, universal: bool) -> Dictionary:
 		return {"hit": true, "killed": false, "correct": false}
 
 func _update_visuals() -> void:
-	shield_sprite.visible = shield_up
+	shield_sprite.visible = false
 	if max_hp >= 2:
 		hp_bar.value = hp / max_hp * 100
 	if rage_timer > 0:
 		modulate = Color(1.5, 0.6, 0.6) if fmod(rage_timer, 0.3) < 0.15 else Color.WHITE
 	else:
 		modulate = Color.WHITE
+	queue_redraw()
+
+func _sprite_index() -> int:
+	if _is_elite():
+		return 6
+	match kind:
+		GameManager.MonsterKind.CHASER: return 2
+		GameManager.MonsterKind.DASHER: return 3
+		GameManager.MonsterKind.SHIELD: return 4
+		GameManager.MonsterKind.GHOST: return 5
+	return 1
+
+func _draw() -> void:
+	if shield_up:
+		draw_arc(Vector2.ZERO, radius + 6, 0, TAU, 32, Color(0.3, 0.6, 1.0, 0.5), 3.0)
 
 func _get_player() -> Node2D:
 	var players := get_tree().get_nodes_in_group("player")

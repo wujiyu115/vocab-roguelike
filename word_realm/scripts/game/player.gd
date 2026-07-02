@@ -5,6 +5,11 @@ signal fired(data: Dictionary)
 signal picked_up(meaning: String)
 signal interacted_chest(chest: Node)
 
+const HERO_SHEET := preload("res://assets/sprites/hero_gun_actions.png")
+const SHEET_COLS := 8
+const SHEET_ROWS := 4
+const DRAW_SIZE := 90.0
+
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var pickup_area: Area2D = $PickupArea
 @onready var shield_sprite: Sprite2D = $ShieldSprite
@@ -39,6 +44,54 @@ var has_move_target := false
 
 func _ready() -> void:
 	add_to_group("player")
+	_build_sprite_frames()
+
+func _build_sprite_frames() -> void:
+	var frames := SpriteFrames.new()
+	var cw := HERO_SHEET.get_width() / SHEET_COLS
+	var ch := HERO_SHEET.get_height() / SHEET_ROWS
+	var dir_names := ["down", "left", "right", "up"]
+
+	# frame layout per direction row: 0=idle, 1-4=walk, 5=dash, 6=fire, 7=hurt
+	for dir_idx in range(4):
+		var row := dir_idx
+		var dir_name: String = dir_names[dir_idx]
+
+		var idle_anim := "idle_" + dir_name
+		frames.add_animation(idle_anim)
+		frames.set_animation_loop(idle_anim, false)
+		frames.add_frame(idle_anim, _atlas_frame(cw, ch, row, 0))
+
+		var walk_anim := "walk_" + dir_name
+		frames.add_animation(walk_anim)
+		frames.set_animation_loop(walk_anim, true)
+		frames.set_animation_speed(walk_anim, 8.0)
+		for col in range(1, 5):
+			frames.add_frame(walk_anim, _atlas_frame(cw, ch, row, col))
+
+		var dash_anim := "dash_" + dir_name
+		frames.add_animation(dash_anim)
+		frames.set_animation_loop(dash_anim, false)
+		frames.add_frame(dash_anim, _atlas_frame(cw, ch, row, 5))
+
+		var fire_anim := "fire_" + dir_name
+		frames.add_animation(fire_anim)
+		frames.set_animation_loop(fire_anim, false)
+		frames.add_frame(fire_anim, _atlas_frame(cw, ch, row, 6))
+
+	# remove default animation if it exists
+	if frames.has_animation("default"):
+		frames.remove_animation("default")
+
+	animated_sprite.sprite_frames = frames
+	animated_sprite.scale = Vector2(DRAW_SIZE / cw, DRAW_SIZE / ch)
+	animated_sprite.position.y = -14
+
+func _atlas_frame(cw: int, ch: int, row: int, col: int) -> AtlasTexture:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = HERO_SHEET
+	atlas.region = Rect2(col * cw, row * ch, cw, ch)
+	return atlas
 
 func _physics_process(delta: float) -> void:
 	_update_timers(delta)
@@ -56,7 +109,8 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	position = position.clamp(Vector2(48, 78), Vector2(GameManager.W - 48, GameManager.H - 48))
 	_update_animation()
-	shield_sprite.visible = shield_time > 0
+	shield_sprite.visible = false
+	queue_redraw()
 
 func _update_timers(delta: float) -> void:
 	if dash_timer > 0: dash_timer -= delta
@@ -200,6 +254,10 @@ func get_player_data() -> Dictionary:
 		"dash_cooldown": dash_cooldown, "throw_speed": throw_speed,
 		"pickup_range": pickup_range, "defense": defense, "luck": luck,
 	}
+
+func _draw() -> void:
+	if shield_time > 0:
+		draw_arc(Vector2.ZERO, radius + 10, 0, TAU, 32, Color(0.3, 0.6, 1.0, 0.45), 4.0)
 
 func load_continue_state(data: Dictionary) -> void:
 	hp = data.get("hp", 100.0)

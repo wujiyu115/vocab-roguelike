@@ -3,6 +3,8 @@ extends Area2D
 
 signal expired(meaning: String)
 
+const ITEMS_SHEET := preload("res://assets/sprites/items_projectiles_chests.png")
+
 var meaning := ""
 var vel := Vector2.ZERO
 var life := 1.55
@@ -20,6 +22,8 @@ func setup(data: Dictionary) -> void:
 	life = 1.55
 	return_on_miss = not universal
 	$Label.text = meaning if not universal else "回声"
+	var idx := 2 if universal else 1
+	SpriteUtils.set_sprite($Sprite2D, ITEMS_SHEET, 4, 4, idx, 34, 34)
 
 func _physics_process(delta: float) -> void:
 	position += vel * delta

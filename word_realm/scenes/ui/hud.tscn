@@ -6,30 +6,54 @@
 layer = 5
 script = ExtResource("1_script")
 
-[node name="TopBar" type="HBoxContainer" parent="."]
-offset_left = 10.0
-offset_top = 8.0
-offset_right = 1270.0
-offset_bottom = 38.0
-theme_override_constants/separation = 20
+[node name="TopBar" type="PanelContainer" parent="."]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1280.0
+offset_bottom = 42.0
 
-[node name="HpBar" type="ProgressBar" parent="TopBar"]
+[node name="HBox" type="HBoxContainer" parent="TopBar"]
 layout_mode = 2
-custom_minimum_size = Vector2(200, 24)
+theme_override_constants/separation = 16
+
+[node name="HpBar" type="ProgressBar" parent="TopBar/HBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 22)
 max_value = 100.0
 value = 100.0
 show_percentage = false
 
-[node name="RoomLabel" type="Label" parent="TopBar"]
+[node name="RoomLabel" type="Label" parent="TopBar/HBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "第 1 间"
+theme_override_font_sizes/font_size = 14
+text = "房间 1：新手森林  进度 / 高中词汇"
 
-[node name="ComboLabel" type="Label" parent="TopBar"]
+[node name="Spacer1" type="Control" parent="TopBar/HBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(1.0, 0.886, 0.459, 1)
-text = ""
+size_flags_horizontal = 3
+
+[node name="ComboLabel" type="Label" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "连击 0  命中率 0%"
+
+[node name="Spacer2" type="Control" parent="TopBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeldLabel" type="Label" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "持有：无"
+
+[node name="Spacer3" type="Control" parent="TopBar/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DashLabel" type="Label" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "闪避"
 
 [node name="MessageLabel" type="Label" parent="."]
 anchors_preset = 7
@@ -38,12 +62,12 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -300.0
-offset_top = -50.0
+offset_top = -40.0
 offset_right = 300.0
-offset_bottom = -10.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 horizontal_alignment = 1
 vertical_alignment = 1
 text = ""
