@@ -1,4 +1,4 @@
-name: Build iOS IPA
+name: Build iOS Xcode Project
 
 on:
   push:
@@ -32,7 +32,6 @@ jobs:
           cd ~/godot
           curl -sLO https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_RELEASE}/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_macos.universal.zip
           unzip -o Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_macos.universal.zip
-          # The zip contains Godot.app
           chmod +x Godot.app/Contents/MacOS/Godot
 
       - name: Download export templates
@@ -45,48 +44,9 @@ jobs:
           unzip -o Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_export_templates.tpz
           mv templates/* "$TEMPLATES_DIR/"
 
-      - name: Install Apple certificate
-        env:
-          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+      - name: Enable export project only
         run: |
-          # Create temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          # Decode and import certificate
-          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
-          security import $RUNNER_TEMP/certificate.p12 \
-            -P "$IOS_CERTIFICATE_PASSWORD" \
-            -A -t cert -f pkcs12 \
-            -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-      - name: Install provisioning profile
-        env:
-          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
-        run: |
-          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-          echo "$IOS_PROVISION_PROFILE_BASE64" | base64 --decode > "$PP_PATH"
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
-
-          # Extract UUID for Godot export preset
-          PP_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PP_PATH"))
-          echo "PP_UUID=$PP_UUID" >> $GITHUB_ENV
-
-      - name: Configure export preset
-        env:
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-        run: |
-          cd word_realm
-          sed -i '' "s|application/app_store_team_id=\"\"|application/app_store_team_id=\"$IOS_TEAM_ID\"|" export_presets.cfg
-          sed -i '' "s|application/provisioning_profile_uuid_release=\"\"|application/provisioning_profile_uuid_release=\"$PP_UUID\"|" export_presets.cfg
-          sed -i '' "s|application/provisioning_profile_uuid_debug=\"\"|application/provisioning_profile_uuid_debug=\"$PP_UUID\"|" export_presets.cfg
+          sed -i '' 's|application/export_project_only=false|application/export_project_only=true|' word_realm/export_presets.cfg
 
       - name: Import project
         run: |
@@ -95,57 +55,40 @@ jobs:
       - name: Export Xcode project
         run: |
           mkdir -p build/ios
-          ~/godot/Godot.app/Contents/MacOS/Godot --headless --export-release "iOS" ../build/ios/WordRealm.xcodeproj --path word_realm
+          ~/godot/Godot.app/Contents/MacOS/Godot --headless --export-debug "iOS" ../build/ios/WordRealm --path word_realm
 
-      - name: Build with xcodebuild
+      - name: Build for iOS Simulator (unsigned)
         run: |
           cd build/ios
-          xcodebuild archive \
+          xcodebuild build \
             -project WordRealm.xcodeproj \
             -scheme WordRealm \
-            -configuration Release \
-            -archivePath $RUNNER_TEMP/WordRealm.xcarchive \
-            -destination "generic/platform=iOS" \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="${{ secrets.IOS_TEAM_ID }}" \
-            CODE_SIGN_IDENTITY="Apple Distribution"
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath derived \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
 
-      - name: Export IPA
+      - name: Package Simulator app
         run: |
-          cat > $RUNNER_TEMP/ExportOptions.plist << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store</string>
-              <key>teamID</key>
-              <string>${{ secrets.IOS_TEAM_ID }}</string>
-              <key>destination</key>
-              <string>export</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>provisioningProfiles</key>
-              <dict>
-                  <key>com.wordrealm.game</key>
-                  <string>${PP_UUID}</string>
-              </dict>
-          </dict>
-          </plist>
-          PLIST
-          xcodebuild -exportArchive \
-            -archivePath $RUNNER_TEMP/WordRealm.xcarchive \
-            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            -exportPath build/ipa
+          APP_PATH=$(find build/ios/derived -name "*.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            cd "$(dirname "$APP_PATH")"
+            zip -r "$GITHUB_WORKSPACE/build/WordRealm-Simulator.zip" "$(basename "$APP_PATH")"
+          fi
 
-      - name: Upload IPA
+      - name: Upload Xcode project
         uses: actions/upload-artifact@v4
         with:
-          name: WordRealm-iOS
-          path: build/ipa/*.ipa
+          name: WordRealm-iOS-Xcode
+          path: build/ios/
           if-no-files-found: error
 
-      - name: Cleanup keychain
+      - name: Upload Simulator build
+        uses: actions/upload-artifact@v4
         if: always()
-        run: |
-          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+        with:
+          name: WordRealm-iOS-Simulator
+          path: build/WordRealm-Simulator.zip
+          if-no-files-found: warn

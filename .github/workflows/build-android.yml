@@ -58,39 +58,28 @@ jobs:
           unzip -o Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}/
 
-      - name: Set up keystore
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
-
       - name: Configure Godot editor settings
         run: |
           mkdir -p ~/.config/godot
-          cat > ~/.config/godot/editor_settings-4.4.tres << 'SETTINGS'
+          cat > ~/.config/godot/editor_settings-4.4.tres << SETTINGS
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
-          export/android/android_sdk_path = "$ANDROID_HOME"
-          export/android/debug_keystore = "/tmp/release.keystore"
-          export/android/debug_keystore_user = "$ANDROID_KEY_ALIAS"
-          export/android/debug_keystore_pass = "$ANDROID_KEYSTORE_PASSWORD"
-          export/android/release_keystore = "/tmp/release.keystore"
-          export/android/release_keystore_user = "$ANDROID_KEY_ALIAS"
-          export/android/release_keystore_pass = "$ANDROID_KEYSTORE_PASSWORD"
+          export/android/android_sdk_path = "${ANDROID_HOME}"
           SETTINGS
-          # Replace env var placeholders with actual values
-          sed -i "s|\$ANDROID_HOME|$ANDROID_HOME|g" ~/.config/godot/editor_settings-4.4.tres
-          sed -i "s|\$ANDROID_KEY_ALIAS|${{ secrets.ANDROID_KEY_ALIAS }}|g" ~/.config/godot/editor_settings-4.4.tres
-          sed -i "s|\$ANDROID_KEYSTORE_PASSWORD|${{ secrets.ANDROID_KEYSTORE_PASSWORD }}|g" ~/.config/godot/editor_settings-4.4.tres
-          sed -i "s|\$ANDROID_KEY_PASSWORD|${{ secrets.ANDROID_KEY_PASSWORD }}|g" ~/.config/godot/editor_settings-4.4.tres
+
+      - name: Disable APK signing
+        run: |
+          sed -i 's|package/signed=true|package/signed=false|' word_realm/export_presets.cfg
 
       - name: Import project
         run: |
           ~/godot/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64 --headless --import --path word_realm --quit 2>&1 || true
 
-      - name: Export APK
+      - name: Export debug APK
         run: |
           mkdir -p build
-          ~/godot/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64 --headless --export-release "Android" ../build/WordRealm.apk --path word_realm
+          ~/godot/Godot_v${GODOT_VERSION}-${GODOT_RELEASE}_linux.x86_64 --headless --export-debug "Android" ../build/WordRealm.apk --path word_realm
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
