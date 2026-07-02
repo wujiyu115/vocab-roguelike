@@ -75,6 +75,10 @@ func _ready():
 
 func _start_room() -> void:
 	GameManager.room += 1
+	# 进入新房间必须回到 PLAYING：清房时状态被切到 ROOM_CLEAR，
+	# 否则第 2 间起 _physics_process / _unhandled_input 的守卫会挡掉
+	# 碰撞掉血、拾取、开火等全部玩法逻辑。
+	GameManager.change_state(GameManager.State.PLAYING)
 	_advance_room_powerups()
 	_load_background()
 	_clear_entities()

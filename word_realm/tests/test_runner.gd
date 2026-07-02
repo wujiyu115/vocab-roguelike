@@ -25,6 +25,7 @@ func _initialize():
 		"res://tests/test_room_generator.gd",
 		"res://tests/test_monster_logic.gd",
 		"res://tests/test_click.gd",
+		"res://tests/test_room_flow.gd",
 	]
 	var suites: Array = []
 	for path in suite_paths:
