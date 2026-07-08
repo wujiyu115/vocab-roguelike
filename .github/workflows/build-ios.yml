@@ -48,6 +48,15 @@ jobs:
         run: |
           sed -i '' 's|application/export_project_only=false|application/export_project_only=true|' word_realm/export_presets.cfg
 
+      - name: Set App Store Team ID
+        env:
+          # Optional: set an APP_STORE_TEAM_ID repo secret for signed device builds.
+          # A placeholder is fine for the unsigned Simulator build below, since Godot
+          # only requires this field to be non-empty to pass export validation.
+          TEAM_ID: ${{ secrets.APP_STORE_TEAM_ID || 'AAAAAAAAAA' }}
+        run: |
+          sed -i '' "s|application/app_store_team_id=\"\"|application/app_store_team_id=\"$TEAM_ID\"|" word_realm/export_presets.cfg
+
       - name: Import project
         run: |
           ~/godot/Godot.app/Contents/MacOS/Godot --headless --import --path word_realm --quit 2>&1 || true
